@@ -1,0 +1,43 @@
+{
+  "name": "parallm",
+  "version": "0.1.0",
+  "description": "Run multiple AI coding agents in parallel and compare their results from your terminal.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "parallm": "./dist/cli/index.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/**/*.test.ts",
+    "test:all": "pnpm run check && pnpm run test && pnpm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "coding-agent",
+    "codex",
+    "comparison",
+    "terminal"
+  ],
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0",
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}
