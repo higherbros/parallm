@@ -49,6 +49,47 @@ test("rejects malformed target names", () => {
   );
 });
 
+test("parses reasoning effort as part of each target", () => {
+  const options = parseCliOptions([
+    "run",
+    "prompt",
+    "-t",
+    "codex:model-a@low",
+    "-t",
+    "codex:model-a@xhigh",
+  ]);
+
+  assert.deepEqual(options.request?.targets, [
+    {
+      id: "codex:model-a@low",
+      agent: "codex",
+      model: "model-a",
+      effort: "low",
+    },
+    {
+      id: "codex:model-a@xhigh",
+      agent: "codex",
+      model: "model-a",
+      effort: "xhigh",
+    },
+  ]);
+});
+
+test("rejects an unknown reasoning effort", () => {
+  assert.throws(
+    () =>
+      parseCliOptions([
+        "run",
+        "prompt",
+        "-t",
+        "codex:model-a@extreme",
+        "-t",
+        "codex:model-b",
+      ]),
+    /Invalid reasoning effort 'extreme'/,
+  );
+});
+
 test("accepts raw Markdown output", () => {
   const options = parseCliOptions([
     "run",

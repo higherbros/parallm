@@ -10,6 +10,7 @@ Parallm delegates work to coding-agent CLIs you already use. It keeps their exis
 ## What works today
 
 - Run the same prompt against two or more Codex model targets concurrently.
+- Compare the same model at different reasoning-effort levels.
 - Watch an animated Ink dashboard with pending, running, completed, failed, and timed-out states.
 - Enforce Codex's read-only sandbox and ephemeral sessions.
 - Keep prompts out of shell command strings by sending them through stdin.
@@ -51,6 +52,16 @@ parallm run "Explain the authentication flow" \
   --timeout 5m \
   --concurrency 2
 ```
+
+Compare reasoning effort for the same model:
+
+```bash
+parallm run "Review this architecture" \
+  -t codex:gpt-5.6@low \
+  -t codex:gpt-5.6@high
+```
+
+Reasoning effort is optional. Without `@effort`, Codex inherits your existing configuration. Supported values are `minimal`, `low`, `medium`, `high`, and `xhigh`; model support can vary, particularly for `xhigh`.
 
 Produce machine-readable output:
 

@@ -56,3 +56,47 @@ test("constructs a read-only ephemeral Codex invocation and sends the prompt via
   assert.deepEqual(events, [{ stream: "stdout", chunk: "answer" }]);
   assert.equal(result.stdout, "answer");
 });
+
+test("overrides Codex reasoning effort when the target specifies it", async () => {
+  let recordedSpec: ProcessSpec | undefined;
+  const runner: ProcessRunner = async (spec) => {
+    recordedSpec = spec;
+    return {
+      exitCode: 0,
+      signal: null,
+      stdout: "answer",
+      stderr: "",
+    };
+  };
+  const adapter = new CodexAdapter(runner, "custom-codex");
+
+  await adapter.execute(
+    {
+      target: {
+        id: "codex:model-a@high",
+        agent: "codex",
+        model: "model-a",
+        effort: "high",
+      },
+      prompt: "Review the repository",
+      cwd: "/workspace/project",
+    },
+    () => undefined,
+  );
+
+  assert.deepEqual(recordedSpec?.args, [
+    "exec",
+    "--model",
+    "model-a",
+    "--config",
+    'model_reasoning_effort="high"',
+    "--sandbox",
+    "read-only",
+    "--ephemeral",
+    "--color",
+    "never",
+    "--cd",
+    "/workspace/project",
+    "-",
+  ]);
+});

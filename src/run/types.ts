@@ -1,7 +1,15 @@
+export type ReasoningEffort =
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh";
+
 export type Target = Readonly<{
   id: string;
   agent: string;
   model: string;
+  effort?: ReasoningEffort;
 }>;
 
 export type RunRequest = Readonly<{

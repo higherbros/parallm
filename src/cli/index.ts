@@ -83,10 +83,10 @@ function helpText(): string {
 Run the same prompt through multiple AI coding-agent targets.
 
 Usage:
-  parallm run <prompt> --target <agent:model> --target <agent:model> [options]
+  parallm run <prompt> --target <agent:model[@effort]> --target <agent:model[@effort]> [options]
 
 Options:
-  -t, --target <agent:model>  Target to run; repeat at least twice
+  -t, --target <target>       agent:model or agent:model@effort; repeat at least twice
       --cwd <directory>       Working directory (default: current directory)
       --timeout <duration>    Per-target timeout, e.g. 30s or 10m (default: 10m)
       --concurrency <number>  Maximum simultaneous targets (default: target count)
@@ -96,8 +96,8 @@ Options:
 
 Example:
   parallm run "Review this repository" \\
-    -t codex:model-a \\
-    -t codex:model-b
+    -t codex:model-a@low \\
+    -t codex:model-a@high
 `;
 }
 

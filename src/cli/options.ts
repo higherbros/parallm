@@ -1,5 +1,9 @@
 import { parseArgs } from "node:util";
-import type { RunRequest, Target } from "../run/types.js";
+import type {
+  ReasoningEffort,
+  RunRequest,
+  Target,
+} from "../run/types.js";
 
 export type OutputFormat = "text" | "markdown" | "json";
 
@@ -65,12 +69,54 @@ export function parseCliOptions(
 function parseTarget(value: string): Target {
   const separator = value.indexOf(":");
   if (separator < 1 || separator === value.length - 1) {
-    throw new Error(`Invalid target '${value}'; expected agent:model`);
+    throw new Error(
+      `Invalid target '${value}'; expected agent:model or agent:model@effort`,
+    );
   }
 
   const agent = value.slice(0, separator).toLowerCase();
-  const model = value.slice(separator + 1);
-  return { id: `${agent}:${model}`, agent, model };
+  const modelAndEffort = value.slice(separator + 1);
+  const effortSeparator = modelAndEffort.lastIndexOf("@");
+  const model =
+    effortSeparator === -1
+      ? modelAndEffort
+      : modelAndEffort.slice(0, effortSeparator);
+
+  if (model.length === 0) {
+    throw new Error(
+      `Invalid target '${value}'; expected agent:model or agent:model@effort`,
+    );
+  }
+
+  if (effortSeparator === -1) {
+    return { id: `${agent}:${model}`, agent, model };
+  }
+
+  const effort = parseReasoningEffort(
+    modelAndEffort.slice(effortSeparator + 1),
+  );
+  return {
+    id: `${agent}:${model}@${effort}`,
+    agent,
+    model,
+    effort,
+  };
+}
+
+function parseReasoningEffort(value: string): ReasoningEffort {
+  const supported: readonly ReasoningEffort[] = [
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+  ];
+  if (!supported.includes(value as ReasoningEffort)) {
+    throw new Error(
+      `Invalid reasoning effort '${value}'; expected minimal, low, medium, high, or xhigh`,
+    );
+  }
+  return value as ReasoningEffort;
 }
 
 function parseFormat(value: string): OutputFormat {

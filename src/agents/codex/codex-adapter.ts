@@ -26,6 +26,12 @@ export class CodexAdapter implements AgentAdapter {
           "exec",
           "--model",
           request.target.model,
+          ...(request.target.effort === undefined
+            ? []
+            : [
+                "--config",
+                `model_reasoning_effort=${JSON.stringify(request.target.effort)}`,
+              ]),
           "--sandbox",
           "read-only",
           "--ephemeral",
