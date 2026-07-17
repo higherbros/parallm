@@ -22,3 +22,30 @@ test("captures stdout and stderr while streaming chunks", async () => {
   assert.equal(result.stderr, "done");
   assert.deepEqual(chunks, ["stdout:hello", "stderr:done"]);
 });
+
+test("returns output captured before an aborted process closes", async () => {
+  const controller = new AbortController();
+  const chunks: string[] = [];
+
+  const result = await runProcess(
+    {
+      command: process.execPath,
+      args: [
+        "-e",
+        "process.stdout.write('partial output'); setInterval(() => {}, 1000)",
+      ],
+      cwd: process.cwd(),
+    },
+    ({ stream, chunk }) => {
+      chunks.push(`${stream}:${chunk}`);
+      controller.abort(new Error("stop"));
+    },
+    controller.signal,
+  );
+
+  assert.equal(result.exitCode, null);
+  assert.ok(result.signal);
+  assert.equal(result.stdout, "partial output");
+  assert.equal(result.stderr, "");
+  assert.deepEqual(chunks, ["stdout:partial output"]);
+});

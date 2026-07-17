@@ -79,6 +79,8 @@ export class ComparisonEngine {
 
     const attemptController = new AbortController();
     let timedOut = false;
+    const stdout: string[] = [];
+    const stderr: string[] = [];
 
     const cancelFromParent = (): void => {
       attemptController.abort(parentSignal?.reason);
@@ -98,6 +100,7 @@ export class ComparisonEngine {
           cwd: request.cwd,
         },
         (event) => {
+          (event.stream === "stdout" ? stdout : stderr).push(event.chunk);
           observe({
             type: "attempt.output",
             target,
@@ -109,7 +112,13 @@ export class ComparisonEngine {
       );
 
       const finishedAtMs = Date.now();
-      const status = execution.exitCode === 0 ? "succeeded" : "failed";
+      const status = timedOut
+        ? "timed_out"
+        : parentSignal?.aborted
+          ? "cancelled"
+          : execution.exitCode === 0
+            ? "succeeded"
+            : "failed";
       const result: AttemptResult = {
         target,
         status,
@@ -120,9 +129,13 @@ export class ComparisonEngine {
         signal: execution.signal,
         stdout: execution.stdout,
         stderr: execution.stderr,
-        ...(status === "failed"
-          ? { error: this.#exitError(execution.exitCode, execution.stderr) }
-          : {}),
+        ...(status === "timed_out"
+          ? { error: "Attempt timed out" }
+          : status === "cancelled"
+            ? { error: this.#cancellationError(parentSignal?.reason) }
+            : status === "failed"
+              ? { error: this.#exitError(execution.exitCode, execution.stderr) }
+              : {}),
       };
       observe({ type: "attempt.completed", result });
       return result;
@@ -141,8 +154,8 @@ export class ComparisonEngine {
         durationMs: finishedAtMs - startedAtMs,
         exitCode: null,
         signal: null,
-        stdout: "",
-        stderr: "",
+        stdout: stdout.join(""),
+        stderr: stderr.join(""),
         error: error instanceof Error ? error.message : String(error),
       };
       observe({ type: "attempt.completed", result });
@@ -180,6 +193,14 @@ export class ComparisonEngine {
     return detail.length > 0
       ? detail
       : `Agent exited with code ${exitCode ?? "unknown"}`;
+  }
+
+  #cancellationError(reason: unknown): string {
+    return reason instanceof Error
+      ? reason.message
+      : reason === undefined
+        ? "Run cancelled"
+        : String(reason);
   }
 
   #validate(request: RunRequest): void {

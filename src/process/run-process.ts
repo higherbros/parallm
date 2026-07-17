@@ -51,6 +51,12 @@ export const runProcess: ProcessRunner = async (spec, emit, signal) =>
     });
 
     child.once("error", (error) => {
+      // Aborting a spawned process emits an AbortError before the child closes.
+      // Wait for `close` so we can return the output captured before termination,
+      // together with the process signal.
+      if (signal?.aborted && error.name === "AbortError") {
+        return;
+      }
       if (!settled) {
         settled = true;
         reject(error);
