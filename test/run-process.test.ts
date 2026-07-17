@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { runProcess } from "../src/process/run-process.js";
 
 test("captures stdout and stderr while streaming chunks", async () => {

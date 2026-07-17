@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import test from "node:test";
 import { stripVTControlCharacters } from "node:util";
+import { test } from "vitest";
 import {
   formatRunAsMarkdown,
   renderMarkdownForTerminal,

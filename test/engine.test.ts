@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { afterEach, test, vi } from "vitest";
 import type { AgentAdapter } from "../src/run/agent.js";
 import { ComparisonEngine } from "../src/run/engine.js";
 import type {
@@ -15,6 +15,10 @@ const targets: readonly Target[] = [
   { id: "fake:two", agent: "fake", model: "two" },
   { id: "fake:three", agent: "fake", model: "three" },
 ];
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function request(overrides: Partial<RunRequest> = {}): RunRequest {
   return {
@@ -95,6 +99,7 @@ test("preserves other results when one target fails", async () => {
 });
 
 test("times out a slow target without cancelling a successful target", async () => {
+  vi.useFakeTimers();
   const twoTargets = targets.slice(0, 2);
   const agent = new FakeAgent(async ({ target }, signal, emit) => {
     if (target.model === "one") {
@@ -104,9 +109,11 @@ test("times out a slow target without cancelling a successful target", async () 
     return success(target.model);
   });
 
-  const result = await new ComparisonEngine([agent]).run(
+  const run = new ComparisonEngine([agent]).run(
     request({ targets: twoTargets, timeoutMs: 25, concurrency: 2 }),
   );
+  await vi.advanceTimersByTimeAsync(25);
+  const result = await run;
 
   assert.deepEqual(
     result.attempts.map((attempt) => attempt.status),
@@ -116,6 +123,7 @@ test("times out a slow target without cancelling a successful target", async () 
 });
 
 test("preserves process metadata when a timed-out adapter closes normally", async () => {
+  vi.useFakeTimers();
   const twoTargets = targets.slice(0, 2);
   const agent = new FakeAgent(async ({ target }, signal) => {
     if (target.model === "one") {
@@ -130,9 +138,11 @@ test("preserves process metadata when a timed-out adapter closes normally", asyn
     return success(target.model);
   });
 
-  const result = await new ComparisonEngine([agent]).run(
+  const run = new ComparisonEngine([agent]).run(
     request({ targets: twoTargets, timeoutMs: 25, concurrency: 2 }),
   );
+  await vi.advanceTimersByTimeAsync(25);
+  const result = await run;
 
   assert.deepEqual(result.attempts[0], {
     target: twoTargets[0],
