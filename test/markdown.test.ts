@@ -132,3 +132,81 @@ test("text presenter renders Markdown when terminal rendering is enabled", () =>
   assert.match(plain, /Status: succeeded/);
   assert.doesNotMatch(plain, /\*\*Status:\*\*/);
 });
+
+test("formats empty output and target identifiers containing code fences", () => {
+  const markdown = formatRunAsMarkdown({
+    ...runResult,
+    attempts: [
+      {
+        ...runResult.attempts[0]!,
+        target: {
+          id: "`codex:model`\nvariant",
+          agent: "codex",
+          model: "model",
+        },
+        durationMs: 12,
+        stdout: "",
+      },
+    ],
+  });
+
+  assert.match(markdown, /^## `` `codex:model` variant ``/);
+  assert.match(markdown, /Duration:\*\* 12ms/);
+  assert.match(markdown, /_No output\._/);
+  assert.doesNotMatch(markdown, /Standard error/);
+});
+
+test("uses a minimum terminal width and handles plain inline text", () => {
+  const rendered = renderMarkdownForTerminal("A plain paragraph.", 10);
+
+  assert.match(stripVTControlCharacters(rendered), /A plain paragraph\./);
+});
+
+test("text presenter reports lifecycle events with status-specific markers", () => {
+  let status = "";
+  const presenter = new TextPresenter({
+    statusOutput: {
+      write(content) {
+        status += content;
+      },
+    },
+  });
+
+  presenter.observe({
+    type: "attempt.started",
+    target: runResult.attempts[0]!.target,
+    at: new Date(0).toISOString(),
+  });
+  presenter.observe({
+    type: "attempt.output",
+    target: runResult.attempts[0]!.target,
+    stream: "stdout",
+    chunk: "ignored",
+  });
+  presenter.observe({
+    type: "attempt.completed",
+    result: { ...runResult.attempts[0]!, durationMs: 1_250 },
+  });
+  presenter.observe({
+    type: "attempt.completed",
+    result: {
+      ...runResult.attempts[0]!,
+      status: "cancelled",
+      durationMs: 20,
+    },
+  });
+  presenter.observe({
+    type: "attempt.completed",
+    result: { ...runResult.attempts[1]!, durationMs: 800 },
+  });
+
+  assert.match(status, /● codex:model-a  running/);
+  assert.match(status, /✓ codex:model-a  succeeded  1\.3s/);
+  assert.match(status, /○ codex:model-a  cancelled  20ms/);
+  assert.match(status, /✗ codex:model-b  failed  800ms/);
+  assert.doesNotMatch(status, /ignored/);
+});
+
+test("text presenter supports its default outputs", () => {
+  assert.ok(new TextPresenter());
+});

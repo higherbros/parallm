@@ -49,3 +49,31 @@ test("returns output captured before an aborted process closes", async () => {
   assert.equal(result.stderr, "");
   assert.deepEqual(chunks, ["stdout:partial output"]);
 });
+
+test("rejects when the executable cannot be spawned", async () => {
+  await assert.rejects(
+    runProcess(
+      {
+        command: "parallm-command-that-does-not-exist",
+        args: [],
+        cwd: process.cwd(),
+      },
+      () => undefined,
+    ),
+    /ENOENT/,
+  );
+});
+
+test("returns the process result when a child closes before consuming stdin", async () => {
+  const result = await runProcess(
+    {
+      command: process.execPath,
+      args: ["-e", "process.stdin.destroy(); process.exit(0)"],
+      cwd: process.cwd(),
+      input: "x".repeat(1_000_000),
+    },
+    () => undefined,
+  );
+
+  assert.equal(result.exitCode, 0);
+});

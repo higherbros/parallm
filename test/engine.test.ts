@@ -7,6 +7,7 @@ import type {
   AgentExecutionRequest,
   AgentExecutionResult,
   RunRequest,
+  RunEvent,
   Target,
 } from "../src/run/types.js";
 
@@ -196,6 +197,133 @@ test("rejects duplicate targets before starting any attempt", async () => {
     engine.run(request({ targets: [targets[0]!, targets[0]!] })),
     /Duplicate target/,
   );
+});
+
+test.each([
+  ["empty prompt", { prompt: "  " }, /Prompt cannot be empty/],
+  ["one target", { targets: targets.slice(0, 1) }, /At least two targets/],
+  ["zero concurrency", { concurrency: 0 }, /Concurrency must be/],
+  ["fractional concurrency", { concurrency: 1.5 }, /Concurrency must be/],
+  ["zero timeout", { timeoutMs: 0 }, /Timeout must be/],
+  ["infinite timeout", { timeoutMs: Number.POSITIVE_INFINITY }, /Timeout must be/],
+] as const)("rejects %s", async (_name, overrides, expected) => {
+  const engine = new ComparisonEngine([
+    new FakeAgent(async ({ target }) => success(target.model)),
+  ]);
+
+  await assert.rejects(engine.run(request(overrides)), expected);
+});
+
+test("rejects targets whose agent has no adapter", async () => {
+  const engine = new ComparisonEngine([
+    new FakeAgent(async ({ target }) => success(target.model)),
+  ]);
+  const unknownTargets: readonly Target[] = [
+    targets[0]!,
+    { id: "missing:model", agent: "missing", model: "model" },
+  ];
+
+  await assert.rejects(
+    engine.run(request({ targets: unknownTargets })),
+    /Unknown agent: missing/,
+  );
+});
+
+test.each([
+  [2, "Agent exited with code 2"],
+  [null, "Agent exited with code unknown"],
+] as const)(
+  "describes an exit with code %s when stderr is empty",
+  async (exitCode, expectedError) => {
+    const agent = new FakeAgent(async () => ({
+      exitCode,
+      signal: null,
+      stdout: "",
+      stderr: "   ",
+    }));
+
+    const result = await new ComparisonEngine([agent]).run(request());
+
+    assert.equal(result.attempts[0]?.status, "failed");
+    assert.equal(result.attempts[0]?.error, expectedError);
+  },
+);
+
+test("captures streamed output and non-Error adapter failures", async () => {
+  const events: RunEvent[] = [];
+  const agent = new FakeAgent(async ({ target }, _signal, emit) => {
+    if (target.model === "one") {
+      emit?.({ stream: "stdout", chunk: "partial out" });
+      emit?.({ stream: "stderr", chunk: "partial err" });
+      throw "adapter exploded";
+    }
+    return success(target.model);
+  });
+
+  const result = await new ComparisonEngine([agent]).run(
+    request({ targets: targets.slice(0, 2) }),
+    (event) => events.push(event),
+  );
+
+  assert.deepEqual(result.attempts[0], {
+    target: targets[0],
+    status: "failed",
+    startedAt: result.attempts[0]?.startedAt,
+    finishedAt: result.attempts[0]?.finishedAt,
+    durationMs: result.attempts[0]?.durationMs,
+    exitCode: null,
+    signal: null,
+    stdout: "partial out",
+    stderr: "partial err",
+    error: "adapter exploded",
+  });
+  assert.deepEqual(
+    events
+      .filter((event) => event.type === "attempt.output")
+      .map((event) => event.stream),
+    ["stdout", "stderr"],
+  );
+});
+
+test("completes every target as cancelled when the run starts aborted", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const execute = async ({ target }: AgentExecutionRequest) => success(target.model);
+  const agent = new FakeAgent(execute);
+
+  const result = await new ComparisonEngine([agent]).run(
+    request(),
+    () => undefined,
+    controller.signal,
+  );
+
+  assert.deepEqual(
+    result.attempts.map((attempt) => [attempt.status, attempt.error]),
+    [
+      ["cancelled", "Run cancelled"],
+      ["cancelled", "Run cancelled"],
+      ["cancelled", "Run cancelled"],
+    ],
+  );
+});
+
+test("uses a non-Error cancellation reason", async () => {
+  const controller = new AbortController();
+  const agent = new FakeAgent(async ({ target }) => {
+    if (target.model === "one") {
+      controller.abort("manual stop");
+    }
+    return success(target.model);
+  });
+
+  const result = await new ComparisonEngine([agent]).run(
+    request({ concurrency: 1 }),
+    () => undefined,
+    controller.signal,
+  );
+
+  assert.equal(result.attempts[0]?.error, "manual stop");
+  assert.equal(result.attempts[1]?.error, "Run cancelled");
 });
 
 function success(stdout: string): AgentExecutionResult {

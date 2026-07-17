@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { pathToFileURL } from "node:url";
 import { CodexAdapter } from "../agents/codex/codex-adapter.js";
 import {
   InkPresenter,
@@ -11,8 +12,10 @@ import { parseCliOptions } from "./options.js";
 
 const VERSION = "0.1.0";
 
-async function main(): Promise<void> {
-  const options = parseCliOptions(process.argv.slice(2));
+export async function main(
+  args: readonly string[] = process.argv.slice(2),
+): Promise<void> {
+  const options = parseCliOptions(args);
 
   if (options.help) {
     process.stdout.write(helpText());
@@ -77,7 +80,7 @@ async function main(): Promise<void> {
   }
 }
 
-function helpText(): string {
+export function helpText(): string {
   return `Parallm ${VERSION}
 
 Run the same prompt through multiple AI coding-agent targets.
@@ -101,8 +104,22 @@ Example:
 `;
 }
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`parallm: ${message}\n\n${helpText()}`);
-  process.exitCode = 2;
-});
+export async function runCli(
+  args: readonly string[] = process.argv.slice(2),
+): Promise<void> {
+  try {
+    await main(args);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`parallm: ${message}\n\n${helpText()}`);
+    process.exitCode = 2;
+  }
+}
+
+const executablePath = process.argv[1];
+if (
+  executablePath !== undefined &&
+  import.meta.url === pathToFileURL(executablePath).href
+) {
+  void runCli();
+}
