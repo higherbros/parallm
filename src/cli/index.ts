@@ -39,9 +39,12 @@ async function main(): Promise<void> {
   };
   process.on("SIGINT", handleInterrupt);
 
-  const textPresenter = new TextPresenter();
+  const textPresenter = new TextPresenter({
+    renderMarkdown:
+      options.format === "text" && process.stdout.isTTY === true,
+  });
   const inkPresenter =
-    options.format === "text" && supportsInteractiveDashboard()
+    options.format !== "json" && supportsInteractiveDashboard()
       ? new InkPresenter(options.request.targets)
       : undefined;
 
@@ -87,7 +90,7 @@ Options:
       --cwd <directory>       Working directory (default: current directory)
       --timeout <duration>    Per-target timeout, e.g. 30s or 10m (default: 10m)
       --concurrency <number>  Maximum simultaneous targets (default: target count)
-      --format <text|json>    Output format (default: text)
+      --format <format>       text, markdown, or json (default: text)
   -h, --help                  Show help
   -v, --version               Show version
 

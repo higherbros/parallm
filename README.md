@@ -16,13 +16,13 @@ Parallm delegates work to coding-agent CLIs you already use. It keeps their exis
 - Apply a per-target timeout and a global concurrency limit.
 - Cancel active attempts with Ctrl+C.
 - Preserve each target's stdout, stderr, exit code, duration, and status.
-- Render human-readable terminal output or stable JSON.
+- Render styled Markdown in interactive terminals, raw Markdown when redirected, or stable JSON.
 
 ## Development setup
 
 Requirements:
 
-- Node.js 20 or newer
+- Node.js 22 or newer
 - pnpm
 - Codex CLI, authenticated through your normal development setup
 
@@ -61,6 +61,15 @@ parallm run "Review this repository" \
   --format json
 ```
 
+Write raw Markdown without terminal styling:
+
+```bash
+parallm run "Review this repository" \
+  -t codex:model-a \
+  -t codex:model-b \
+  --format markdown > comparison.md
+```
+
 Run `parallm --help` for every option.
 
 ## Terminal experience
@@ -77,7 +86,7 @@ Interactive terminals display a live dashboard while targets run:
 Ctrl+C to cancel
 ```
 
-Parallm automatically keeps the original plain-text status output in CI, non-interactive terminals, and redirected sessions. `--format json` remains animation-free so it can be safely consumed by scripts.
+After the dashboard finishes, Parallm renders response Markdown with headings, lists, tables, emphasis, and syntax-highlighted fenced code blocks. Redirected output automatically remains raw Markdown without ANSI styling; `--format markdown` requests that behavior explicitly. `--format json` remains animation-free so it can be safely consumed by scripts.
 
 ## Architecture
 
@@ -87,7 +96,7 @@ Agent adapters sit at the external-process seam. The Codex adapter translates a 
 
 ```text
 CLI → Comparison engine → Agent adapters → Installed coding-agent CLIs
-                     └──→ Normalized events → Ink, text, or JSON output
+                     └──→ Normalized events → Ink, Markdown, or JSON output
 ```
 
 ## Safety

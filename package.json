@@ -23,7 +23,7 @@
     "test:all": "pnpm run check && pnpm run test && pnpm run build"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "keywords": [
     "ai",
@@ -36,6 +36,7 @@
   "license": "MIT",
   "packageManager": "pnpm@10.33.0",
   "devDependencies": {
+    "@types/marked-terminal": "^6.1.1",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "tsx": "^4.23.1",
@@ -43,6 +44,8 @@
   },
   "dependencies": {
     "ink": "^7.1.1",
+    "marked": "^15.0.12",
+    "marked-terminal": "^7.3.0",
     "react": "^19.2.7"
   }
 }

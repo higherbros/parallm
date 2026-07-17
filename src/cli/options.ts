@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import type { RunRequest, Target } from "../run/types.js";
 
-export type OutputFormat = "text" | "json";
+export type OutputFormat = "text" | "markdown" | "json";
 
 export type CliOptions = Readonly<{
   help: boolean;
@@ -74,10 +74,10 @@ function parseTarget(value: string): Target {
 }
 
 function parseFormat(value: string): OutputFormat {
-  if (value === "text" || value === "json") {
+  if (value === "text" || value === "markdown" || value === "json") {
     return value;
   }
-  throw new Error(`Invalid format '${value}'; expected text or json`);
+  throw new Error(`Invalid format '${value}'; expected text, markdown, or json`);
 }
 
 function parsePositiveInteger(value: string, name: string): number {

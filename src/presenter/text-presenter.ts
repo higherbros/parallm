@@ -1,9 +1,34 @@
 import type { RunEvent, RunResult } from "../run/types.js";
+import {
+  formatRunAsMarkdown,
+  renderMarkdownForTerminal,
+} from "./markdown.js";
+
+type Output = Readonly<{
+  write(content: string): unknown;
+  columns?: number;
+}>;
+
+type TextPresenterOptions = Readonly<{
+  renderMarkdown?: boolean;
+  resultOutput?: Output;
+  statusOutput?: Output;
+}>;
 
 export class TextPresenter {
+  readonly #renderMarkdown: boolean;
+  readonly #resultOutput: Output;
+  readonly #statusOutput: Output;
+
+  constructor(options: TextPresenterOptions = {}) {
+    this.#renderMarkdown = options.renderMarkdown ?? false;
+    this.#resultOutput = options.resultOutput ?? process.stdout;
+    this.#statusOutput = options.statusOutput ?? process.stderr;
+  }
+
   observe(event: RunEvent): void {
     if (event.type === "attempt.started") {
-      process.stderr.write(`● ${event.target.id}  running\n`);
+      this.#statusOutput.write(`● ${event.target.id}  running\n`);
       return;
     }
 
@@ -14,25 +39,19 @@ export class TextPresenter {
           : event.result.status === "cancelled"
             ? "○"
             : "✗";
-      process.stderr.write(
+      this.#statusOutput.write(
         `${marker} ${event.result.target.id}  ${event.result.status}  ${formatDuration(event.result.durationMs)}\n`,
       );
     }
   }
 
   print(result: RunResult): void {
-    for (const attempt of result.attempts) {
-      const heading = `${attempt.target.id} · ${attempt.status} · ${formatDuration(attempt.durationMs)}`;
-      const separator = "─".repeat(Math.max(heading.length, 48));
-      const output = attempt.stdout.trim();
-
-      process.stdout.write(`\n${heading}\n${separator}\n`);
-      process.stdout.write(`${output.length > 0 ? output : "(no output)"}\n`);
-
-      if (attempt.status !== "succeeded" && attempt.stderr.trim().length > 0) {
-        process.stdout.write(`\nstderr:\n${attempt.stderr.trim()}\n`);
-      }
-    }
+    const markdown = formatRunAsMarkdown(result);
+    this.#resultOutput.write(
+      this.#renderMarkdown
+        ? renderMarkdownForTerminal(markdown, this.#resultOutput.columns)
+        : markdown,
+    );
   }
 }
 

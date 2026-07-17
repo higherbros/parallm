@@ -48,3 +48,18 @@ test("rejects malformed target names", () => {
     /expected agent:model/,
   );
 });
+
+test("accepts raw Markdown output", () => {
+  const options = parseCliOptions([
+    "run",
+    "prompt",
+    "-t",
+    "codex:model-a",
+    "-t",
+    "codex:model-b",
+    "--format",
+    "markdown",
+  ]);
+
+  assert.equal(options.format, "markdown");
+});
