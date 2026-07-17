@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 
 import { CodexAdapter } from "../agents/codex/codex-adapter.js";
+import {
+  InkPresenter,
+  supportsInteractiveDashboard,
+} from "../presenter/ink-presenter.js";
 import { TextPresenter } from "../presenter/text-presenter.js";
 import { ComparisonEngine } from "../run/engine.js";
 import { parseCliOptions } from "./options.js";
@@ -35,27 +39,37 @@ async function main(): Promise<void> {
   };
   process.on("SIGINT", handleInterrupt);
 
+  const textPresenter = new TextPresenter();
+  const inkPresenter =
+    options.format === "text" && supportsInteractiveDashboard()
+      ? new InkPresenter(options.request.targets)
+      : undefined;
+
   try {
     const engine = new ComparisonEngine([new CodexAdapter()]);
-    const presenter = new TextPresenter();
     const result = await engine.run(
       options.request,
-      options.format === "text"
-        ? (event) => presenter.observe(event)
-        : () => undefined,
+      options.format === "json"
+        ? () => undefined
+        : inkPresenter
+          ? (event) => inkPresenter.observe(event)
+          : (event) => textPresenter.observe(event),
       controller.signal,
     );
+
+    await inkPresenter?.stop();
 
     if (options.format === "json") {
       process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     } else {
-      presenter.print(result);
+      textPresenter.print(result);
     }
 
     if (result.attempts.some((attempt) => attempt.status !== "succeeded")) {
       process.exitCode = controller.signal.aborted ? 130 : 1;
     }
   } finally {
+    await inkPresenter?.stop();
     process.off("SIGINT", handleInterrupt);
   }
 }

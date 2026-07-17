@@ -10,6 +10,7 @@ Parallm delegates work to coding-agent CLIs you already use. It keeps their exis
 ## What works today
 
 - Run the same prompt against two or more Codex model targets concurrently.
+- Watch an animated Ink dashboard with pending, running, completed, failed, and timed-out states.
 - Enforce Codex's read-only sandbox and ephemeral sessions.
 - Keep prompts out of shell command strings by sending them through stdin.
 - Apply a per-target timeout and a global concurrency limit.
@@ -62,6 +63,22 @@ parallm run "Review this repository" \
 
 Run `parallm --help` for every option.
 
+## Terminal experience
+
+Interactive terminals display a live dashboard while targets run:
+
+```text
+◆ Parallm · Comparing 3 targets
+
+  ⠹  codex:model-a                 Running       12.4s
+  ⠸  codex:model-b                 Running        8.7s
+  ○  codex:model-c                 Pending            —
+
+Ctrl+C to cancel
+```
+
+Parallm automatically keeps the original plain-text status output in CI, non-interactive terminals, and redirected sessions. `--format json` remains animation-free so it can be safely consumed by scripts.
+
 ## Architecture
 
 The comparison engine is Parallm's central module. It owns validation, bounded parallel execution, cancellation, timeouts, event normalization, and partial-result handling behind one `run()` interface.
@@ -70,7 +87,7 @@ Agent adapters sit at the external-process seam. The Codex adapter translates a 
 
 ```text
 CLI → Comparison engine → Agent adapters → Installed coding-agent CLIs
-                     └──→ Normalized events → Text or JSON output
+                     └──→ Normalized events → Ink, text, or JSON output
 ```
 
 ## Safety
