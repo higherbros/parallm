@@ -1,6 +1,6 @@
 {
   "name": "parallm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Run multiple AI coding agents in parallel and compare their results from your terminal.",
   "homepage": "https://github.com/higherbros/parallm#readme",
   "repository": {
