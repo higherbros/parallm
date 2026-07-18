@@ -35,7 +35,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -70,18 +69,9 @@ jobs:
         run: pnpm audit --prod
       - name: Publish package
         env:
-          # Required only for the first publish. Remove the environment secret
-          # after configuring this workflow as the npm trusted publisher.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           RELEASE_IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           set -euo pipefail
-          if [[ -z "${NODE_AUTH_TOKEN}" ]]; then
-            # setup-node configures classic token auth whenever registry-url is
-            # set. Remove it after bootstrap so npm can use trusted publishing.
-            sed -i '/registry\.npmjs\.org.*:_authToken/d' "${NPM_CONFIG_USERCONFIG}"
-          fi
-
           if [[ "${RELEASE_IS_PRERELEASE}" == "true" ]]; then
             npm publish --access public --provenance --tag next
           else
