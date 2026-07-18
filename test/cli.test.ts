@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import type { CliOptions } from "../src/cli/options.js";
 import type { RunEvent, RunResult } from "../src/run/types.js";
@@ -77,6 +77,10 @@ vi.mock("../src/presenter/text-presenter.js", () => ({
 
 import { helpText, main, runCli } from "../src/cli/index.js";
 
+const packageVersion = (
+  createRequire(import.meta.url)("../package.json") as { version: string }
+).version;
+
 const originalStdoutIsTTY = Object.getOwnPropertyDescriptor(
   process.stdout,
   "isTTY",
@@ -146,7 +150,7 @@ test("prints the version", async () => {
 
   await main(["--version"]);
 
-  assert.deepEqual(write.mock.calls, [["0.1.0\n"]]);
+  assert.deepEqual(write.mock.calls, [[`${packageVersion}\n`]]);
 });
 
 test("rejects an option result without a run request", async () => {
@@ -298,9 +302,7 @@ test("documents supported targets, options, and an example", () => {
   assert.match(help, /codex:model-a@high/);
 });
 
-test("runs automatically when loaded as the executable entry point", async () => {
-  const originalExecutable = process.argv[1];
-  process.argv[1] = fileURLToPath(new URL("../src/cli/index.ts", import.meta.url));
+test("bin entry point runs the CLI automatically", async () => {
   mocks.parseCliOptions.mockReturnValue({
     help: true,
     version: false,
@@ -309,18 +311,10 @@ test("runs automatically when loaded as the executable entry point", async () =>
   const stdout = mockStdout();
   vi.resetModules();
 
-  try {
-    await import("../src/cli/index.js");
-    await vi.waitFor(() => {
-      assert.ok(stdout.mock.calls.length > 0);
-    });
-  } finally {
-    if (originalExecutable === undefined) {
-      delete process.argv[1];
-    } else {
-      process.argv[1] = originalExecutable;
-    }
-  }
+  await import("../src/cli/bin.js");
+  await vi.waitFor(() => {
+    assert.ok(stdout.mock.calls.length > 0);
+  });
 });
 
 function runOptions(format: "text" | "markdown" | "json"): CliOptions {

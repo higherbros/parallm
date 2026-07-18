@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "parallm": "./dist/cli/index.js"
+    "parallm": "./dist/cli/bin.js"
   },
   "exports": {
     ".": "./dist/index.js"
@@ -22,7 +22,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:all": "pnpm run check && pnpm run test:coverage && pnpm run build"
+    "test:all": "pnpm run check && pnpm run test:coverage && pnpm run build",
+    "smoke:package": "node scripts/smoke-package.mjs",
+    "prepack": "pnpm run build",
+    "prepublishOnly": "pnpm run test:all && pnpm run smoke:package"
   },
   "engines": {
     "node": ">=22"

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 import { CodexAdapter } from "../agents/codex/codex-adapter.js";
 import {
   InkPresenter,
@@ -10,7 +10,10 @@ import { TextPresenter } from "../presenter/text-presenter.js";
 import { ComparisonEngine } from "../run/engine.js";
 import { parseCliOptions } from "./options.js";
 
-const VERSION = "0.1.0";
+const packageJson = createRequire(import.meta.url)("../../package.json") as {
+  version: string;
+};
+const VERSION = packageJson.version;
 
 export async function main(
   args: readonly string[] = process.argv.slice(2),
@@ -114,12 +117,4 @@ export async function runCli(
     process.stderr.write(`parallm: ${message}\n\n${helpText()}`);
     process.exitCode = 2;
   }
-}
-
-const executablePath = process.argv[1];
-if (
-  executablePath !== undefined &&
-  import.meta.url === pathToFileURL(executablePath).href
-) {
-  void runCli();
 }
