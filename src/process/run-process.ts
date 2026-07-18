@@ -1,11 +1,14 @@
 import { spawn } from "node:child_process";
 
+const DEFAULT_TERMINATION_GRACE_MS = 1_000;
+
 export type ProcessSpec = Readonly<{
   command: string;
   args: readonly string[];
   cwd: string;
   input?: string;
   env?: NodeJS.ProcessEnv;
+  terminationGraceMs?: number;
 }>;
 
 export type ProcessChunk = Readonly<{
@@ -31,15 +34,56 @@ export const runProcess: ProcessRunner = async (spec, emit, signal) =>
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     let settled = false;
+    let forceKillTimeout: NodeJS.Timeout | undefined;
+    const managesProcessGroup = process.platform !== "win32";
 
     const child = spawn(spec.command, [...spec.args], {
       cwd: spec.cwd,
+      detached: managesProcessGroup,
       env: spec.env,
       shell: false,
-      signal,
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
     });
+
+    const killManagedProcess = (killSignal: NodeJS.Signals): void => {
+      if (managesProcessGroup && child.pid !== undefined) {
+        try {
+          process.kill(-child.pid, killSignal);
+          return;
+        } catch {
+          // The process group may have already exited; fall back to the child.
+        }
+      }
+
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill(killSignal);
+      }
+    };
+    const clearForceKill = (): void => {
+      if (forceKillTimeout !== undefined) {
+        clearTimeout(forceKillTimeout);
+        forceKillTimeout = undefined;
+      }
+    };
+    const scheduleForceKill = (): void => {
+      forceKillTimeout = setTimeout(() => {
+        killManagedProcess("SIGKILL");
+      }, Math.max(0, spec.terminationGraceMs ?? DEFAULT_TERMINATION_GRACE_MS));
+      forceKillTimeout.unref();
+    };
+    const handleAbort = (): void => {
+      killManagedProcess("SIGTERM");
+      scheduleForceKill();
+    };
+    const stopWatchingAbort = (): void => {
+      signal?.removeEventListener("abort", handleAbort);
+    };
+
+    signal?.addEventListener("abort", handleAbort, { once: true });
+    if (signal?.aborted) {
+      handleAbort();
+    }
 
     child.stdout.on("data", (data: Buffer) => {
       stdout.push(data);
@@ -51,14 +95,10 @@ export const runProcess: ProcessRunner = async (spec, emit, signal) =>
     });
 
     child.once("error", (error) => {
-      // Aborting a spawned process emits an AbortError before the child closes.
-      // Wait for `close` so we can return the output captured before termination,
-      // together with the process signal.
-      if (signal?.aborted && error.name === "AbortError") {
-        return;
-      }
       if (!settled) {
         settled = true;
+        clearForceKill();
+        stopWatchingAbort();
         reject(error);
       }
     });
@@ -66,6 +106,8 @@ export const runProcess: ProcessRunner = async (spec, emit, signal) =>
     child.once("close", (exitCode, exitSignal) => {
       if (!settled) {
         settled = true;
+        clearForceKill();
+        stopWatchingAbort();
         resolve({
           exitCode,
           signal: exitSignal,

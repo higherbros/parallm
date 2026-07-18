@@ -156,6 +156,39 @@ test("formats empty output and target identifiers containing code fences", () =>
   assert.doesNotMatch(markdown, /Standard error/);
 });
 
+test("renders attempt errors when a failed process has no stderr", () => {
+  const markdown = formatRunAsMarkdown({
+    ...runResult,
+    attempts: [
+      {
+        ...runResult.attempts[1]!,
+        stderr: "",
+        error: "spawn codex ENOENT",
+      },
+    ],
+  });
+
+  assert.match(markdown, /### Error/);
+  assert.match(markdown, /```text\nspawn codex ENOENT\n```/);
+});
+
+test("does not duplicate an attempt error already shown as stderr", () => {
+  const markdown = formatRunAsMarkdown({
+    ...runResult,
+    attempts: [
+      {
+        ...runResult.attempts[1]!,
+        stderr: "agent failed",
+        error: "agent failed",
+      },
+    ],
+  });
+
+  assert.doesNotMatch(markdown, /### Error/);
+  assert.match(markdown, /### Standard error/);
+  assert.equal(markdown.match(/agent failed/g)?.length, 1);
+});
+
 test("uses a minimum terminal width and handles plain inline text", () => {
   const rendered = renderMarkdownForTerminal("A plain paragraph.", 10);
 

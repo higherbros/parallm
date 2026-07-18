@@ -53,7 +53,15 @@ function formatAttemptAsMarkdown(attempt: AttemptResult): string {
     output.length > 0 ? output : "_No output._",
   ];
 
+  const error = stripVTControlCharacters(attempt.error ?? "").trim();
   const standardError = stripVTControlCharacters(attempt.stderr).trim();
+  if (
+    attempt.status !== "succeeded" &&
+    error.length > 0 &&
+    error !== standardError
+  ) {
+    sections.push("### Error", fencedCode(error, "text"));
+  }
   if (attempt.status !== "succeeded" && standardError.length > 0) {
     sections.push("### Standard error", fencedCode(standardError, "text"));
   }
