@@ -24,8 +24,9 @@ export class CodexAdapter implements AgentAdapter {
         command: this.executable,
         args: [
           "exec",
-          "--model",
-          request.target.model,
+          ...(request.target.model === "default"
+            ? []
+            : ["--model", request.target.model]),
           ...(request.target.effort === undefined
             ? []
             : [

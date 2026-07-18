@@ -3,6 +3,9 @@ import { Marked, type MarkedExtension } from "marked";
 import { markedTerminal } from "marked-terminal";
 import type { AttemptResult, RunResult } from "../run/types.js";
 
+const DIAGNOSTIC_LINE =
+  /^(?:(?:\(node:\d+\)\s+)?(?:warning|error|fatal):|\d{4}-\d{2}-\d{2}T\S+\s+(?:warn|error|fatal)\b)/i;
+
 // marked-terminal 7 renders tight-list text as a raw token when used with
 // Marked 15. Making list items loose routes them through its paragraph
 // renderer (which reflows text), while the text override preserves nested
@@ -55,6 +58,16 @@ function formatAttemptAsMarkdown(attempt: AttemptResult): string {
 
   const error = stripVTControlCharacters(attempt.error ?? "").trim();
   const standardError = stripVTControlCharacters(attempt.stderr).trim();
+  if (attempt.status === "succeeded") {
+    const diagnostics = extractDiagnostics(standardError);
+    if (diagnostics.length > 0) {
+      sections.push(
+        "### Diagnostics",
+        "The agent completed successfully but emitted warnings or errors:",
+        fencedCode(diagnostics, "text"),
+      );
+    }
+  }
   if (
     attempt.status !== "succeeded" &&
     error.length > 0 &&
@@ -67,6 +80,25 @@ function formatAttemptAsMarkdown(attempt: AttemptResult): string {
   }
 
   return sections.join("\n\n");
+}
+
+function extractDiagnostics(standardError: string): string {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+
+  for (const rawLine of standardError.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (
+      line.length > 0 &&
+      DIAGNOSTIC_LINE.test(line) &&
+      !seen.has(line)
+    ) {
+      seen.add(line);
+      lines.push(line);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 function inlineCode(value: string): string {

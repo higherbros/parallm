@@ -189,6 +189,69 @@ test("does not duplicate an attempt error already shown as stderr", () => {
   assert.equal(markdown.match(/agent failed/g)?.length, 1);
 });
 
+test("surfaces warnings and errors emitted by a successful attempt", () => {
+  const markdown = formatRunAsMarkdown({
+    ...runResult,
+    attempts: [
+      {
+        ...runResult.attempts[0]!,
+        stderr: [
+          "OpenAI Codex v0.144.5",
+          "hook: SessionStart Completed",
+          "warning: Model metadata was unavailable",
+          "ERROR: MCP authentication failed",
+          "ERROR: MCP authentication failed",
+          "tokens used",
+          "42",
+        ].join("\n"),
+      },
+    ],
+  });
+
+  assert.match(markdown, /### Diagnostics/);
+  assert.match(markdown, /warning: Model metadata was unavailable/);
+  assert.match(markdown, /ERROR: MCP authentication failed/);
+  assert.equal(markdown.match(/MCP authentication failed/g)?.length, 1);
+  assert.doesNotMatch(markdown, /OpenAI Codex/);
+  assert.doesNotMatch(markdown, /SessionStart/);
+  assert.doesNotMatch(markdown, /tokens used/);
+});
+
+test("keeps routine successful stderr out of comparison output", () => {
+  const markdown = formatRunAsMarkdown({
+    ...runResult,
+    attempts: [
+      {
+        ...runResult.attempts[0]!,
+        stderr: "OpenAI Codex v0.144.5\nhook: Stop Completed\ntokens used\n42",
+      },
+    ],
+  });
+
+  assert.doesNotMatch(markdown, /### Diagnostics/);
+  assert.doesNotMatch(markdown, /OpenAI Codex/);
+});
+
+test("does not mistake echoed prompt or response text for diagnostics", () => {
+  const markdown = formatRunAsMarkdown({
+    ...runResult,
+    attempts: [
+      {
+        ...runResult.attempts[0]!,
+        stderr: [
+          "user",
+          "Find the most serious error in this code.",
+          "codex",
+          "No error was found.",
+        ].join("\n"),
+      },
+    ],
+  });
+
+  assert.doesNotMatch(markdown, /### Diagnostics/);
+  assert.doesNotMatch(markdown, /serious error/);
+});
+
 test("uses a minimum terminal width and handles plain inline text", () => {
   const rendered = renderMarkdownForTerminal("A plain paragraph.", 10);
 

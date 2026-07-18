@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -80,6 +81,27 @@ try {
   );
   assert.match(exportedNames, /CodexAdapter/);
   assert.match(exportedNames, /ComparisonEngine/);
+
+  const installedPackageRoot = join(
+    installDirectory,
+    "node_modules",
+    packageJson.name,
+  );
+  const installedPackageJson = JSON.parse(
+    readFileSync(join(installedPackageRoot, "package.json"), "utf8"),
+  );
+  const exportedTypes = installedPackageJson.exports?.["."]?.types;
+  assert.equal(exportedTypes, "./dist/index.d.ts");
+  assert.equal(
+    existsSync(join(installedPackageRoot, exportedTypes)),
+    true,
+    "the public type declaration should be included in the package",
+  );
+  assert.equal(
+    existsSync(join(installedPackageRoot, "SECURITY.md")),
+    true,
+    "the security policy should be included in the package",
+  );
 
   process.stdout.write(
     `Packed package smoke test passed (${packageJson.name}@${packageJson.version}).\n`,

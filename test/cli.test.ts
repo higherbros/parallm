@@ -299,7 +299,8 @@ test("documents supported targets, options, and an example", () => {
 
   assert.match(help, /agent:model\[@effort\]/);
   assert.match(help, /--concurrency/);
-  assert.match(help, /codex:model-a@high/);
+  assert.match(help, /codex:default@high/);
+  assert.match(help, /inherit the model selected by Codex/);
 });
 
 test("bin entry point runs the CLI automatically", async () => {

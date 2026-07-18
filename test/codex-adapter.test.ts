@@ -100,3 +100,45 @@ test("overrides Codex reasoning effort when the target specifies it", async () =
     "-",
   ]);
 });
+
+test("inherits the configured Codex model for the default model alias", async () => {
+  let recordedSpec: ProcessSpec | undefined;
+  const runner: ProcessRunner = async (spec) => {
+    recordedSpec = spec;
+    return {
+      exitCode: 0,
+      signal: null,
+      stdout: "answer",
+      stderr: "",
+    };
+  };
+  const adapter = new CodexAdapter(runner, "custom-codex");
+
+  await adapter.execute(
+    {
+      target: {
+        id: "codex:default@low",
+        agent: "codex",
+        model: "default",
+        effort: "low",
+      },
+      prompt: "Review the repository",
+      cwd: "/workspace/project",
+    },
+    () => undefined,
+  );
+
+  assert.deepEqual(recordedSpec?.args, [
+    "exec",
+    "--config",
+    'model_reasoning_effort="low"',
+    "--sandbox",
+    "read-only",
+    "--ephemeral",
+    "--color",
+    "never",
+    "--cd",
+    "/workspace/project",
+    "-",
+  ]);
+});

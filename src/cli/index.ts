@@ -100,10 +100,12 @@ Options:
   -h, --help                  Show help
   -v, --version               Show version
 
+Use codex:default to inherit the model selected by Codex.
+
 Example:
   parallm run "Review this repository" \\
-    -t codex:model-a@low \\
-    -t codex:model-a@high
+    -t codex:default@low \\
+    -t codex:default@high
 `;
 }
 

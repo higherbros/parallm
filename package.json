@@ -2,6 +2,14 @@
   "name": "parallm",
   "version": "0.1.0",
   "description": "Run multiple AI coding agents in parallel and compare their results from your terminal.",
+  "homepage": "https://github.com/higherbros/parallm#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/higherbros/parallm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/higherbros/parallm/issues"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,13 +17,21 @@
     "parallm": "./dist/cli/bin.js"
   },
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
   "files": [
     "dist",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "RELEASING.md",
+    "SECURITY.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc -p tsconfig.json --noEmit",
